@@ -36,9 +36,39 @@ class DataButtons:
             T1.delete('1.0', END)
             T1.insert(END, 'You are not connected to any DB')
 
-b1_file = ''
-def data_one(file):
-    DataButtons(file)
+
+b1_file = 'all_inv.sql'
+b2_file = 'inv_target_month.sql'
+b3_file = 'never_inv.sql'
+b4_file = 'not_inv_target_month.sql'
+
+
+def data_one():
+    DataButtons(b1_file)
+    T1.config(state='normal')
+    T1.delete('1.0', END)
+    T1.insert(END, 'Extraction complete')
+
+
+def data_two():
+    DataButtons(b2_file)
+    T1.config(state='normal')
+    T1.delete('1.0', END)
+    T1.insert(END, 'Extraction complete')
+
+
+def data_three():
+    DataButtons(b3_file)
+    T1.config(state='normal')
+    T1.delete('1.0', END)
+    T1.insert(END, 'Extraction complete')
+
+
+def data_four():
+    DataButtons(b4_file)
+    T1.config(state='normal')
+    T1.delete('1.0', END)
+    T1.insert(END, 'Extraction complete')
 
 
 window = Tk()
