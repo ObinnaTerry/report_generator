@@ -8,25 +8,6 @@ import pandas as pd
 import paramiko
 
 
-def database_login_par():
-    """returns server login credentials from config file"""
-
-    parser = RawConfigParser()
-    parser.read("db-creds.cfg")
-    return (parser.get('client', "user").strip(),
-            parser.get('client', "password").strip())
-
-
-username, password = database_login_par()
-
-
-def t_insert(msg):
-    T1.config(state='normal')
-    T1.delete('1.0', END)
-    T1.insert(END, msg)
-    T1.config(state='disabled')
-
-
 class MySqlScriptError(Exception):
     """Exception class that is raised when stderr is not empty"""
 
@@ -85,7 +66,7 @@ class SshUtility:
         """executes desired command on remote server"""
 
         try:
-            if self.server_connect():
+            if self.server_connect:
                 timeout = 5
                 t_insert('Executing Command...')
                 stdin, stdout, stderr = self.client.exec_command(cmd)
@@ -129,7 +110,7 @@ class SshUtility:
                 exit_code = stdout.channel.recv_exit_status()
                 # most 'good' servers will return an exit code after executing a command
                 if exit_code == 0 and not self.stderr_chunks:  # exit code zero usually implies no errors occurred
-                    return t_insert(f"SQL query completed!..\n{''.join(self.stdout_chunks)}")
+                    return t_insert(f"SQL query completed!..\n\n{''.join(self.stdout_chunks)}")
 
                 if not exit_code and self.stderr_chunks:
                     # exit code zero returned, but stderr is not empty, this could imply minor issues or warnings
@@ -160,7 +141,7 @@ class SshUtility:
         self.local_target = f'{dest_path}\\data_extract'
         remote_target = f'/var/lib/mysql-files/{file_name}'
         try:
-            if self.server_connect():
+            if self.server_connect:
                 sftp = self.client.open_sftp()
                 T1.config(state='normal')
                 T1.delete('1.0', END)
@@ -199,16 +180,16 @@ class SshUtility:
         T1.insert(END, 'Data Transformation complete...')
         T1.config(state='disabled')
 
-    def sql_edit(self):
+    def sql_edit(self, sql_file):
         date = date_text.get()
         add = 'SET @date_limit : = '
         sign = ';'
         set_date = add + date + sign
         try:
-            if self.server_connect():
+            if self.server_connect:
                 sftp = self.client.open_sftp()
                 t_insert('Updating SQL file data...')
-                with sftp.file(r'/var/lib/mysql-files/online_count.csv', 'r+') as file:
+                with sftp.file(f'/var/lib/mysql-files/{sql_file}', 'r+') as file:
                     content = file.readlines()
                     with sftp.file(r'/var/lib/mysql-files/online_count.csv', 'w+') as file2:
                         for line in content:
@@ -227,15 +208,49 @@ class SshUtility:
             raise
 
 
+def database_login_par():
+    """returns server login credentials from config file"""
+
+    parser = RawConfigParser()
+    parser.read("db-creds.cfg")
+    return (parser.get('client', "user").strip(),
+            parser.get('client', "password").strip())
 
 
+def sql_file_names():
+    """returns SQL file names from config file"""
+
+    parser = RawConfigParser()
+    parser.read("db-creds.cfg")
+    return (parser.get('sql_script', "all_invoiced").strip(),
+            parser.get('sql_script', "never_invoiced").strip(),
+            parser.get('sql_script', "target_month").strip(),
+            parser.get('sql_script', "not_target_month").strip())
+
+
+def server_commands():
+    """returns commands to be executed on remote server"""
+
+    parser = RawConfigParser()
+    parser.read("db-creds.cfg")
+    return (parser.get('commands', "all_inv_cmd").strip(),
+            parser.get('commands', "never_inv_cmd").strip(),
+            parser.get('commands', "tar_month_inv_cmd").strip(),
+            parser.get('commands', "tar_month_not_inv_cmd").strip())
+
+
+def t_insert(msg):
+    T1.config(state='normal')
+    T1.delete('1.0', END)
+    T1.insert(END, msg)
+    T1.config(state='disabled')
+
+
+all_invoiced_sql, never_invoiced_sql, target_month_sql, not_target_month_sql = sql_file_names()
+username, password = database_login_par()
+all_inv_cmd, never_inv_cmd, tar_month_inv_cmd, tar_month_not_inv_cmd = server_commands()
 
 ssh = SshUtility()
-
-all_inv_cmd = 'ls'
-never_inv_cmd = ''
-tar_month_inv_cmd = ''
-tar_month_not_inv_cmd = ''
 
 
 def connect_button():
@@ -244,6 +259,7 @@ def connect_button():
 
 def all_invoiced():
     file_name = 'all_invoiced.csv'
+    ssh.sql_edit(all_invoiced_sql)
     ssh.exec_cmd(all_inv_cmd)
     ssh.file_copy(file_name)
     ssh.data_clean(file_name)
@@ -251,61 +267,25 @@ def all_invoiced():
 
 def never_invoiced():
     file_name = 'never_invoiced.csv'
-    ssh.exec_cmd(all_inv_cmd)
+    ssh.exec_cmd(never_inv_cmd)
     ssh.file_copy(file_name)
     ssh.data_clean(file_name)
 
 
 def tar_month_invoiced():
-    file_name = 'never_invoiced.csv'
-    ssh.exec_cmd(all_inv_cmd)
+    file_name = 'tar_month_invoiced.csv'
+    ssh.sql_edit(target_month_sql)
+    ssh.exec_cmd(tar_month_inv_cmd)
     ssh.file_copy(file_name)
     ssh.data_clean(file_name)
 
 
-
-# def data_one():
-#     DataButtons(b1_file)
-#     T1.config(state='normal')
-#     T1.delete('1.0', END)
-#     T1.insert(END, 'Task completed!')
-#     T1.config(state='disabled')
-#
-#
-# def data_two():
-#     DataButtons(b2_file)
-#     T1.config(state='normal')
-#     T1.delete('1.0', END)
-#     T1.insert(END, 'Task completed!')
-#     T1.config(state='disabled')
-#
-#
-# def data_three():
-#     DataButtons(b3_file)
-#     T1.config(state='normal')
-#     T1.delete('1.0', END)
-#     T1.insert(END, 'Task completed!')
-#     T1.config(state='disabled')
-#
-#
-# def data_four():
-#     DataButtons(b4_file)
-#     T1.config(state='normal')
-#     T1.delete('1.0', END)
-#     T1.insert(END, 'Task completed!')
-#     T1.config(state='disabled')
-#
-#
-# def test_data():
-#     try:
-#         DataButtons(b_test)
-#     except:
-#         raise
-#     else:
-#         T1.config(state='normal')
-#         T1.delete('1.0', END)
-#         T1.insert(END, 'Task completed!')
-#         T1.config(state='disabled')
+def tar_month_not_invoiced():
+    file_name = 'tar_month_not_invoiced.csv'
+    ssh.sql_edit(not_target_month_sql)
+    ssh.exec_cmd(tar_month_not_inv_cmd)
+    ssh.file_copy(file_name)
+    ssh.data_clean(file_name)
 
 
 window = Tk()
@@ -328,19 +308,19 @@ T1 = Text(window, height=10, width=30)
 T1.grid(row=2, column=0, rowspan=8, columnspan=1, pady=(0, 0), padx=(20, 5))
 T1.config(state='disabled')
 
-b1 = Button(window, text='data 1', width=15, command=connect_button)
+b1 = Button(window, text='Test Con', width=15, command=connect_button)
 b1.grid(row=2, column=1, pady=(0, 10), padx=(0, 8))
 
-b2 = Button(window, text='data 2', width=15, command=all_invoiced)
+b2 = Button(window, text='All Invoiced', width=15, command=all_invoiced)
 b2.grid(row=3, column=1, pady=(0, 10), padx=(0, 8))
 
-b3 = Button(window, text='data 3', width=15)
+b3 = Button(window, text='Never Invoiced', width=15)
 b3.grid(row=4, column=1, pady=(0, 10), padx=(0, 8))
 
-b4 = Button(window, text='data 4', width=15)
+b4 = Button(window, text='Target Invoiced', width=15)
 b4.grid(row=5, column=1, pady=(0, 10), padx=(0, 8))
 
-b5 = Button(window, text='all data', width=15)
+b5 = Button(window, text='Target Not Inv.', width=15)
 b5.grid(row=6, column=1, pady=(0, 10), padx=(0, 8))
 
 b6 = Button(window, text='view data', width=15)
@@ -353,5 +333,3 @@ b8 = Button(window, text='close', width=15, command=window.destroy)
 b8.grid(row=8, column=1, pady=(0, 10), padx=(0, 8))
 
 window.mainloop()
-
-print(ssh.exec_cmd('ls'))
