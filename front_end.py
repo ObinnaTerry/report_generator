@@ -1,10 +1,11 @@
-from tkinter import *
-# from backend import SshUtility
-import paramiko
+import os
 import select
-import socket, os
+import socket
 from configparser import RawConfigParser
+from tkinter import *
+
 import pandas as pd
+import paramiko
 
 
 def database_login_par():
@@ -43,6 +44,10 @@ class SshUtility:
     """'this class contains methods that will be used for interacting with the remote server"""
 
     def __init__(self):
+        self.client = None
+        self.stdout_chunks = None
+        self.stderr_chunks = None
+        self.local_target = None
         self.password = password
         self.username = username
 
@@ -123,7 +128,7 @@ class SshUtility:
 
                 exit_code = stdout.channel.recv_exit_status()
                 # most 'good' servers will return an exit code after executing a command
-                if not exit_code and not self.stderr_chunks:  # exit code zero usually implies no errors occurred
+                if exit_code == 0 and not self.stderr_chunks:  # exit code zero usually implies no errors occurred
                     return t_insert(f"SQL query completed!..\n{''.join(self.stdout_chunks)}")
 
                 if not exit_code and self.stderr_chunks:
@@ -132,7 +137,8 @@ class SshUtility:
 
                 if len(self.stderr_chunks) > 0 and exit_code:  # non-zero exit code implies error
                     raise (MySqlScriptError(self.stderr_chunks))  # raises the MySqlScriptError class
-
+            else:
+                t_insert('Please Establish a connection...')
         except paramiko.SSHException as e:
             t_insert(e)
             self.client.close()
@@ -185,19 +191,77 @@ class SshUtility:
         T1.insert(END, 'Transforming data...\n')
         output_name = target_data.split('.')[0]
         data = pd.read_csv(f'{self.local_target}\\{target_data}', header=None, index_col=False)
-        data.columns = ['TPIN', 'Tax_Payername', 'Terminal_ID', 'Taxpayer_Address', 'Tax_Office', 'Latest_Time', 'Issued', 'Total_Sales', 'Total_Tax', 'Sector']
+        data.columns = ['TPIN', 'Tax_Payername', 'Terminal_ID', 'Taxpayer_Address', 'Tax_Office', 'Latest_Time',
+                        'Issued', 'Total_Sales', 'Total_Tax', 'Sector']
         data.TPIN = data.TPIN.astype(str)
         data.Terminal_ID = data.Terminal_ID.astype(str)
         data.to_excel(f'{self.local_target}\\{output_name}.xlsx', index=False, header=True)
         T1.insert(END, 'Data Transformation complete...')
         T1.config(state='disabled')
 
+    def sql_edit(self):
+        date = date_text.get()
+        add = 'SET @date_limit : = '
+        sign = ';'
+        set_date = add + date + sign
+        try:
+            if self.server_connect():
+                sftp = self.client.open_sftp()
+                t_insert('Updating SQL file data...')
+                with sftp.file(r'/var/lib/mysql-files/online_count.csv', 'r+') as file:
+                    content = file.readlines()
+                    with sftp.file(r'/var/lib/mysql-files/online_count.csv', 'w+') as file2:
+                        for line in content:
+                            if add in line:
+                                new_line = set_date
+                                file2.write(f'{new_line}\n')
+                            else:
+                                file2.write(line)
+        except paramiko.SSHException as e:
+            t_insert(e)
+            self.client.close()
+            raise
+        except Exception as e:
+            t_insert(e)
+            self.client.close()
+            raise
+
+
+
+
 
 ssh = SshUtility()
+
+all_inv_cmd = 'ls'
+never_inv_cmd = ''
+tar_month_inv_cmd = ''
+tar_month_not_inv_cmd = ''
 
 
 def connect_button():
     return ssh.server_connect()
+
+
+def all_invoiced():
+    file_name = 'all_invoiced.csv'
+    ssh.exec_cmd(all_inv_cmd)
+    ssh.file_copy(file_name)
+    ssh.data_clean(file_name)
+
+
+def never_invoiced():
+    file_name = 'never_invoiced.csv'
+    ssh.exec_cmd(all_inv_cmd)
+    ssh.file_copy(file_name)
+    ssh.data_clean(file_name)
+
+
+def tar_month_invoiced():
+    file_name = 'never_invoiced.csv'
+    ssh.exec_cmd(all_inv_cmd)
+    ssh.file_copy(file_name)
+    ssh.data_clean(file_name)
+
 
 
 # def data_one():
@@ -267,7 +331,7 @@ T1.config(state='disabled')
 b1 = Button(window, text='data 1', width=15, command=connect_button)
 b1.grid(row=2, column=1, pady=(0, 10), padx=(0, 8))
 
-b2 = Button(window, text='data 2', width=15)
+b2 = Button(window, text='data 2', width=15, command=all_invoiced)
 b2.grid(row=3, column=1, pady=(0, 10), padx=(0, 8))
 
 b3 = Button(window, text='data 3', width=15)
@@ -289,3 +353,5 @@ b8 = Button(window, text='close', width=15, command=window.destroy)
 b8.grid(row=8, column=1, pady=(0, 10), padx=(0, 8))
 
 window.mainloop()
+
+print(ssh.exec_cmd('ls'))
