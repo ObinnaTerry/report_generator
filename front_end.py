@@ -195,7 +195,7 @@ class SshUtility:
                         for line in content:
                             if add in line:
                                 new_line = set_date
-                                file2.write(f'{new_line}\n')
+                                file2.write(f'\'{new_line}\'\n')
                             else:
                                 file2.write(line)
         except paramiko.SSHException as e:
@@ -259,33 +259,61 @@ def connect_button():
 
 def all_invoiced():
     file_name = 'all_invoiced.csv'
-    ssh.sql_edit(all_invoiced_sql)
-    ssh.exec_cmd(all_inv_cmd)
-    ssh.file_copy(file_name)
-    ssh.data_clean(file_name)
+    try:
+        ssh.sql_edit(all_invoiced_sql)
+    except AttributeError as e:
+        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+        raise
+    else:
+        ssh.exec_cmd(all_inv_cmd)
+        ssh.file_copy(file_name)
+        ssh.data_clean(file_name)
 
 
 def never_invoiced():
     file_name = 'never_invoiced.csv'
-    ssh.exec_cmd(never_inv_cmd)
-    ssh.file_copy(file_name)
-    ssh.data_clean(file_name)
+    try:
+        ssh.sql_edit(never_invoiced_sql)
+    except AttributeError as e:
+        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+        raise
+    else:
+        ssh.exec_cmd(never_inv_cmd)
+        ssh.file_copy(file_name)
+        ssh.data_clean(file_name)
 
 
 def tar_month_invoiced():
     file_name = 'tar_month_invoiced.csv'
-    ssh.sql_edit(target_month_sql)
-    ssh.exec_cmd(tar_month_inv_cmd)
-    ssh.file_copy(file_name)
-    ssh.data_clean(file_name)
+    try:
+        ssh.sql_edit(target_month_sql)
+    except AttributeError as e:
+        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+        raise
+    else:
+        ssh.exec_cmd(tar_month_inv_cmd)
+        ssh.file_copy(file_name)
+        ssh.data_clean(file_name)
 
 
 def tar_month_not_invoiced():
     file_name = 'tar_month_not_invoiced.csv'
-    ssh.sql_edit(not_target_month_sql)
-    ssh.exec_cmd(tar_month_not_inv_cmd)
-    ssh.file_copy(file_name)
-    ssh.data_clean(file_name)
+    try:
+        ssh.sql_edit(not_target_month_sql)
+    except AttributeError as e:
+        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+        raise
+    else:
+        ssh.exec_cmd(tar_month_not_inv_cmd)
+        ssh.file_copy(file_name)
+        ssh.data_clean(file_name)
+
+
+def all_report():
+    tar_month_invoiced()
+    never_invoiced()
+    all_invoiced()
+    tar_month_not_invoiced()
 
 
 window = Tk()
@@ -304,32 +332,32 @@ ip_text = StringVar()
 e1 = Entry(window, textvariable=ip_text)
 e1.grid(row=1, column=1, pady=(0, 20), padx=(0, 20))
 
-T1 = Text(window, height=10, width=30)
+T1 = Text(window, height=15, width=40)
 T1.grid(row=2, column=0, rowspan=8, columnspan=1, pady=(0, 0), padx=(20, 5))
 T1.config(state='disabled')
 
 b1 = Button(window, text='Test Con', width=15, command=connect_button)
-b1.grid(row=2, column=1, pady=(0, 10), padx=(0, 8))
+b1.grid(row=2, column=1, pady=(0, 10), padx=(50, 8))
 
 b2 = Button(window, text='All Invoiced', width=15, command=all_invoiced)
-b2.grid(row=3, column=1, pady=(0, 10), padx=(0, 8))
+b2.grid(row=3, column=1, pady=(0, 10), padx=(50, 8))
 
 b3 = Button(window, text='Never Invoiced', width=15)
-b3.grid(row=4, column=1, pady=(0, 10), padx=(0, 8))
+b3.grid(row=4, column=1, pady=(0, 10), padx=(50, 8))
 
 b4 = Button(window, text='Target Invoiced', width=15)
-b4.grid(row=5, column=1, pady=(0, 10), padx=(0, 8))
+b4.grid(row=5, column=1, pady=(0, 10), padx=(50, 8))
 
 b5 = Button(window, text='Target Not Inv.', width=15)
-b5.grid(row=6, column=1, pady=(0, 10), padx=(0, 8))
+b5.grid(row=6, column=1, pady=(0, 10), padx=(50, 8))
 
-b6 = Button(window, text='view data', width=15)
-b6.grid(row=7, column=1, pady=(0, 10), padx=(0, 8))
+b6 = Button(window, text='All Report', width=15, command=all_report)
+b6.grid(row=7, column=1, pady=(0, 10), padx=(50, 8))
 
 b7 = Button(window, text='email data', width=15)
-b7.grid(row=8, column=1, pady=(0, 10), padx=(0, 8))
+b7.grid(row=8, column=1, pady=(0, 10), padx=(50, 8))
 
 b8 = Button(window, text='close', width=15, command=window.destroy)
-b8.grid(row=8, column=1, pady=(0, 10), padx=(0, 8))
+b8.grid(row=9, column=1, pady=(0, 10), padx=(50, 8))
 
 window.mainloop()
