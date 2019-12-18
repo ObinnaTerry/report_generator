@@ -40,7 +40,7 @@ class SshUtility:
         try:
             self.client = paramiko.SSHClient()
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.client.connect(hostname=ip_text.get(), username=username, password=password)
+            self.client.connect(hostname=ip_text.get(), username='inspur', password='ZRA@IMS2018')
             T1.config(state='normal')
             T1.insert(END, '\nSuccessfully Connected!')
             T1.config(state='disabled')
@@ -67,7 +67,7 @@ class SshUtility:
 
         try:
             if self.server_connect:
-                timeout = 5
+                timeout = 10
                 t_insert('Executing Command...')
                 stdin, stdout, stderr = self.client.exec_command(cmd)
                 channel = stdout.channel
@@ -109,14 +109,14 @@ class SshUtility:
 
                 exit_code = stdout.channel.recv_exit_status()
                 # most 'good' servers will return an exit code after executing a command
-                if exit_code == 0 and not self.stderr_chunks:  # exit code zero usually implies no errors occurred
+                if self.stdout_chunks and exit_code == 0:  # exit code zero usually implies no errors occurred
                     return t_insert(f"SQL query completed!..\n\n{''.join(self.stdout_chunks)}")
 
-                if not exit_code and self.stderr_chunks:
+                if self.stdout_chunks and exit_code != 0:
                     # exit code zero returned, but stderr is not empty, this could imply minor issues or warnings
-                    return t_insert(f"SQL query completed..\nPossible issues:\n{''.join(self.stderr_chunks)}")
+                    return t_insert(f"SQL query completed..\n\nWarning:\n\n{''.join(self.stdout_chunks)}")
 
-                if len(self.stderr_chunks) > 0 and exit_code:  # non-zero exit code implies error
+                if len(self.stderr_chunks) > 0:  # non-zero exit code implies error
                     raise (MySqlScriptError(self.stderr_chunks))  # raises the MySqlScriptError class
             else:
                 t_insert('Please Establish a connection...')
@@ -172,8 +172,12 @@ class SshUtility:
         T1.insert(END, 'Transforming data...\n')
         output_name = target_data.split('.')[0]
         data = pd.read_csv(f'{self.local_target}\\{target_data}', header=None, index_col=False)
-        data.columns = ['TPIN', 'Tax_Payername', 'Terminal_ID', 'Taxpayer_Address', 'Tax_Office', 'Latest_Time',
-                        'Issued', 'Total_Sales', 'Total_Tax', 'Sector']
+        if len(data.columns) == 8:
+            data.columns = ['TPIN', 'Tax_Payername', 'Terminal_ID', 'Taxpayer_Address', 'Tax_Office', 'Latest_Time',
+                            'Issued', 'Sector']
+        else:
+            data.columns = ['TPIN', 'Tax_Payerame', 'Terminal_ID', 'Taxpayer_Address', 'Tax_Office', 'Latest_Time',
+                            'Issued', 'Total_Sales', 'Total_Tax', 'Sector']
         data.TPIN = data.TPIN.astype(str)
         data.Terminal_ID = data.Terminal_ID.astype(str)
         data.to_excel(f'{self.local_target}\\{output_name}.xlsx', index=False, header=True)
@@ -182,9 +186,12 @@ class SshUtility:
 
     def sql_edit(self, sql_file):
         date = date_text.get()
-        add = 'SET @date_limit : = '
+        date_limit = 'SET @date_limit : = '
+        year_month = 'SET @target_year_month :='
         sign = ';'
-        set_date = add + date + sign
+        set_date = f'{date_limit} \'{date}\'{sign}'
+        year_month_extract = ''.join(date.split('-')[0:2])
+        set_year_month = f'{year_month} \'{year_month_extract}\'{sign}'
         try:
             if self.server_connect:
                 sftp = self.client.open_sftp()
@@ -193,9 +200,12 @@ class SshUtility:
                     content = file.readlines()
                     with sftp.file(r'/var/lib/mysql-files/online_count.csv', 'w+') as file2:
                         for line in content:
-                            if add in line:
+                            if date_limit in line:
                                 new_line = set_date
-                                file2.write(f'\'{new_line}\'\n')
+                                file2.write(f'{new_line}\n')
+                            elif year_month in line:
+                                new_line = set_year_month
+                                file2.write(f'{new_line}\n')
                             else:
                                 file2.write(line)
         except paramiko.SSHException as e:
@@ -249,7 +259,7 @@ def t_insert(msg):
 all_invoiced_sql, never_invoiced_sql, target_month_sql, not_target_month_sql = sql_file_names()
 username, password = database_login_par()
 all_inv_cmd, never_inv_cmd, tar_month_inv_cmd, tar_month_not_inv_cmd = server_commands()
-
+print(never_inv_cmd)
 ssh = SshUtility()
 
 
@@ -272,28 +282,29 @@ def all_invoiced():
 
 def never_invoiced():
     file_name = 'never_invoiced.csv'
-    try:
-        ssh.sql_edit(never_invoiced_sql)
-    except AttributeError as e:
-        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
-        raise
-    else:
-        ssh.exec_cmd(never_inv_cmd)
-        ssh.file_copy(file_name)
-        ssh.data_clean(file_name)
+    # try:
+    #     ssh.exec_cmd('mysql -uroot -pInspur@2017#ims.sx sx_ims < /root/Documents/sql_scripts/never_inv.sql')
+    # except AttributeError as e:
+    #     t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+    #     raise
+    # else:
+    #     ssh.file_copy(file_name)
+    #     ssh.data_clean(file_name)
+    return ssh.file_copy(file_name)
 
 
 def tar_month_invoiced():
-    file_name = 'tar_month_invoiced.csv'
-    try:
-        ssh.sql_edit(target_month_sql)
-    except AttributeError as e:
-        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
-        raise
-    else:
-        ssh.exec_cmd(tar_month_inv_cmd)
-        ssh.file_copy(file_name)
-        ssh.data_clean(file_name)
+    # file_name = 'tar_month_invoiced.csv'
+    # try:
+    #     ssh.sql_edit(target_month_sql)
+    # except AttributeError as e:
+    #     t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+    #     raise
+    # else:
+    #     ssh.exec_cmd(tar_month_inv_cmd)
+    #     ssh.file_copy(file_name)
+    #     ssh.data_clean(file_name)
+    return ssh.data_clean('never_invoiced.csv')
 
 
 def tar_month_not_invoiced():
@@ -317,6 +328,7 @@ def all_report():
 
 
 window = Tk()
+window.title('Monthly Invoiced Device Report Generator Version 0.1')
 
 l1 = Label(window, text='Month')
 l1.grid(row=0, column=0, pady=(20, 0), padx=(20, 5))
@@ -337,27 +349,27 @@ T1.grid(row=2, column=0, rowspan=8, columnspan=1, pady=(0, 0), padx=(20, 5))
 T1.config(state='disabled')
 
 b1 = Button(window, text='Test Con', width=15, command=connect_button)
-b1.grid(row=2, column=1, pady=(0, 10), padx=(50, 8))
+b1.grid(row=2, column=1, pady=(0, 10), padx=(50, 30))
 
 b2 = Button(window, text='All Invoiced', width=15, command=all_invoiced)
-b2.grid(row=3, column=1, pady=(0, 10), padx=(50, 8))
+b2.grid(row=3, column=1, pady=(0, 10), padx=(50, 30))
 
-b3 = Button(window, text='Never Invoiced', width=15)
-b3.grid(row=4, column=1, pady=(0, 10), padx=(50, 8))
+b3 = Button(window, text='Never Invoiced', width=15, command=never_invoiced)
+b3.grid(row=4, column=1, pady=(0, 10), padx=(50, 30))
 
-b4 = Button(window, text='Target Invoiced', width=15)
-b4.grid(row=5, column=1, pady=(0, 10), padx=(50, 8))
+b4 = Button(window, text='Target Invoiced', width=15, command=tar_month_invoiced)
+b4.grid(row=5, column=1, pady=(0, 10), padx=(50, 30))
 
 b5 = Button(window, text='Target Not Inv.', width=15)
-b5.grid(row=6, column=1, pady=(0, 10), padx=(50, 8))
+b5.grid(row=6, column=1, pady=(0, 10), padx=(50, 30))
 
 b6 = Button(window, text='All Report', width=15, command=all_report)
-b6.grid(row=7, column=1, pady=(0, 10), padx=(50, 8))
+b6.grid(row=7, column=1, pady=(0, 10), padx=(50, 30))
 
 b7 = Button(window, text='email data', width=15)
-b7.grid(row=8, column=1, pady=(0, 10), padx=(50, 8))
+b7.grid(row=8, column=1, pady=(0, 10), padx=(50, 30))
 
 b8 = Button(window, text='close', width=15, command=window.destroy)
-b8.grid(row=9, column=1, pady=(0, 10), padx=(50, 8))
+b8.grid(row=9, column=1, pady=(0, 10), padx=(50, 30))
 
 window.mainloop()
