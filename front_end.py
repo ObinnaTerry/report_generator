@@ -40,7 +40,7 @@ class SshUtility:
         try:
             self.client = paramiko.SSHClient()
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.client.connect(hostname=ip_text.get(), username='inspur', password='ZRA@IMS2018')
+            self.client.connect(hostname=ip_text.get(), username=username, password=password)
             T1.config(state='normal')
             T1.insert(END, '\nSuccessfully Connected!')
             T1.config(state='disabled')
