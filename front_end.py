@@ -282,29 +282,27 @@ def all_invoiced():
 
 def never_invoiced():
     file_name = 'never_invoiced.csv'
-    # try:
-    #     ssh.exec_cmd('mysql -uroot -pInspur@2017#ims.sx sx_ims < /root/Documents/sql_scripts/never_inv.sql')
-    # except AttributeError as e:
-    #     t_insert(f'Please Establish a Connection and try again...\n\n {e}')
-    #     raise
-    # else:
-    #     ssh.file_copy(file_name)
-    #     ssh.data_clean(file_name)
-    return ssh.file_copy(file_name)
+    try:
+        ssh.exec_cmd(all_inv_cmd)
+    except AttributeError as e:
+        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+        raise
+    else:
+        ssh.file_copy(file_name)
+        ssh.data_clean(file_name)
 
 
 def tar_month_invoiced():
-    # file_name = 'tar_month_invoiced.csv'
-    # try:
-    #     ssh.sql_edit(target_month_sql)
-    # except AttributeError as e:
-    #     t_insert(f'Please Establish a Connection and try again...\n\n {e}')
-    #     raise
-    # else:
-    #     ssh.exec_cmd(tar_month_inv_cmd)
-    #     ssh.file_copy(file_name)
-    #     ssh.data_clean(file_name)
-    return ssh.data_clean('never_invoiced.csv')
+    file_name = 'tar_month_invoiced.csv'
+    try:
+        ssh.sql_edit(target_month_sql)
+    except AttributeError as e:
+        t_insert(f'Please Establish a Connection and try again...\n\n {e}')
+        raise
+    else:
+        ssh.exec_cmd(tar_month_inv_cmd)
+        ssh.file_copy(file_name)
+        ssh.data_clean(file_name)
 
 
 def tar_month_not_invoiced():
