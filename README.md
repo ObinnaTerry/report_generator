@@ -1,6 +1,6 @@
 # Report Generator
 
-Well, i got tired of connecting to our remote DB and decided to write python program that will automate a lot of the process. 
+Well, I got tired of connecting to our remote DB and decided to write python program that will automate a lot of the process. 
 
 This is a desktop app made with python tkinter. The idea is to, with a click of a button, connect to a remote DB, run desired SQL script, and copy the output to your local host. Want to email the report out? Thats also just another button away!
 
