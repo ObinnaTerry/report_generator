@@ -3,6 +3,7 @@ import select
 import socket
 from configparser import RawConfigParser
 from tkinter import *
+from _email import EmailApi
 
 import pandas as pd
 import paramiko
@@ -186,7 +187,7 @@ class SshUtility:
 
     def sql_edit(self, sql_file):
         date = date_text.get()
-        date_limit = 'SET @date_limit : = '
+        date_limit = 'SET @date_limit :='
         year_month = 'SET @target_year_month :='
         sign = ';'
         set_date = f'{date_limit} \'{date}\'{sign}'
@@ -260,7 +261,9 @@ all_invoiced_sql, never_invoiced_sql, target_month_sql, not_target_month_sql = s
 username, password = database_login_par()
 all_inv_cmd, never_inv_cmd, tar_month_inv_cmd, tar_month_not_inv_cmd = server_commands()
 print(never_inv_cmd)
+
 ssh = SshUtility()
+email = EmailApi()
 
 
 def connect_button():
@@ -325,6 +328,10 @@ def all_report():
     tar_month_not_invoiced()
 
 
+def email_button():
+    return email.send_message()
+
+
 window = Tk()
 window.title('Monthly Invoiced Device Report Generator Version 0.1')
 
@@ -364,7 +371,7 @@ b5.grid(row=6, column=1, pady=(0, 10), padx=(50, 30))
 b6 = Button(window, text='All Report', width=15, command=all_report)
 b6.grid(row=7, column=1, pady=(0, 10), padx=(50, 30))
 
-b7 = Button(window, text='email data', width=15)
+b7 = Button(window, text='Email Report', width=15, command=email_button)
 b7.grid(row=8, column=1, pady=(0, 10), padx=(50, 30))
 
 b8 = Button(window, text='close', width=15, command=window.destroy)
