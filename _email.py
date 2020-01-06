@@ -15,7 +15,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 
-class Test:
+class EmailApi:
 
     def __init__(self):
         SCOPES = ['https://www.googleapis.com/auth/gmail.send']
@@ -88,7 +88,3 @@ class Test:
             return message
         except errors.HttpError as error:
             print(f'An error occurred: {error}')
-
-
-f = Test()
-f.send_message()
