@@ -1,5 +1,5 @@
-SET @date_limit : = ;
-SET @target_year_month : = ;
+SET @date_limit := ;
+SET @target_year_month := ;
 
 SELECT           t2.taxpayer_code    AS 'TPIN',
                  t2.taxpayer_name    AS 'Taxpayer Name',
@@ -59,4 +59,9 @@ WHERE            extract(year_month FROM drawer_time) = '201911'
 ORDER BY         t3.drawer_time,
                  t2.device_code,
                  t2.taxpayer_code,
-                 t2.tax_office;
+                 t2.tax_office
+INTO OUTFILE '/var/lib/mysql-files/tar_month_invoiced.csv' 
+FIELDS ENCLOSED BY '"' 
+TERMINATED BY ',' 
+ESCAPED BY '"' 
+LINES TERMINATED BY '\r\n';
