@@ -37,4 +37,9 @@ WHERE  drawer_time IS NULL
 ORDER  BY t3.drawer_time,
           t2.device_code,
           t2.taxpayer_code,
-          t2.tax_office;
+          t2.tax_office
+INTO OUTFILE '/var/lib/mysql-files/never_invoiced.csv' 
+FIELDS ENCLOSED BY '"' 
+TERMINATED BY ',' 
+ESCAPED BY '"' 
+LINES TERMINATED BY '\r\n';
