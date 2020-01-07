@@ -19,7 +19,8 @@ class MySqlScriptError(Exception):
     def __str__(self):
         return t_insert(f"--- MySqlScriptError ---\n{self.errorMsg}")
 
-    def __repr__(self): return self.__str__()
+    def __repr__(self):
+        return self.__str__()
 
 
 class SshUtility:
@@ -109,7 +110,6 @@ class SshUtility:
                 stderr.close()
 
                 exit_code = stdout.channel.recv_exit_status()
-                print(exit_code)
                 # most 'good' servers will return an exit code after executing a command
                 if self.stdout_chunks and exit_code == 0:  # exit code zero usually implies no errors occurred
                     return t_insert(f"SQL query completed!..\n\n{''.join(self.stdout_chunks)}")
@@ -173,18 +173,21 @@ class SshUtility:
         T1.delete('1.0', END)
         T1.insert(END, 'Transforming data...\n')
         output_name = target_data.split('.')[0]
-        data = pd.read_csv(f'{self.local_target}\\{target_data}', header=None, index_col=False)
-        if len(data.columns) == 8:
-            data.columns = ['TPIN', 'Tax_Payername', 'Terminal_ID', 'Taxpayer_Address', 'Tax_Office', 'Latest_Time',
-                            'Issued', 'Sector']
+        try:
+            data = pd.read_csv(f'{self.local_target}\\{target_data}', delimiter=',', header=None,
+                               index_col=False)
+        except pd.errors.ParserError:
+            T1.insert('An error occurred while transforming the data to excel. Please do this manually')
+        except Exception as e:
+            T1.insert('An error occurred while transforming the data to excel. Please do this manually')
         else:
             data.columns = ['TPIN', 'Tax_Payerame', 'Terminal_ID', 'Taxpayer_Address', 'Tax_Office', 'Latest_Time',
                             'Issued', 'Total_Sales', 'Total_Tax', 'Sector']
-        data.TPIN = data.TPIN.astype(str)
-        data.Terminal_ID = data.Terminal_ID.astype(str)
-        data.to_excel(f'{self.local_target}\\{output_name}.xlsx', index=False, header=True)
-        T1.insert(END, 'Data Transformation complete...')
-        T1.config(state='disabled')
+            data.TPIN = data.TPIN.astype(str)
+            data.Terminal_ID = data.Terminal_ID.astype(str)
+            data.to_excel(f'{self.local_target}\\{output_name}.xlsx', index=False, header=True)
+            T1.insert(END, 'Data Transformation complete...')
+            T1.config(state='disabled')
 
     def sql_edit(self, sql_file):
         date = date_text.get()
@@ -261,7 +264,6 @@ def t_insert(msg):
 all_invoiced_sql, never_invoiced_sql, target_month_sql, not_target_month_sql = sql_file_names()
 username, password = database_login_par()
 all_inv_cmd, never_inv_cmd, tar_month_inv_cmd, tar_month_not_inv_cmd = server_commands()
-print(never_inv_cmd)
 
 ssh = SshUtility()
 email = EmailApi()
@@ -287,13 +289,14 @@ def all_invoiced():
 def never_invoiced():
     file_name = 'never_invoiced.csv'
     try:
-        ssh.exec_cmd(never_inv_cmd)
+        ssh.sql_edit(never_invoiced_sql)
     except AttributeError as e:
         t_insert(f'Please Establish a Connection and try again...\n\n {e}')
         raise
-    # else:
-    #     ssh.file_copy(file_name)
-    #     ssh.data_clean(file_name)
+    else:
+        ssh.exec_cmd(never_inv_cmd)
+        ssh.file_copy(file_name)
+        ssh.data_clean(file_name)
 
 
 def tar_month_invoiced():
