@@ -109,16 +109,17 @@ class SshUtility:
                 stderr.close()
 
                 exit_code = stdout.channel.recv_exit_status()
+                print(exit_code)
                 # most 'good' servers will return an exit code after executing a command
                 if self.stdout_chunks and exit_code == 0:  # exit code zero usually implies no errors occurred
                     return t_insert(f"SQL query completed!..\n\n{''.join(self.stdout_chunks)}")
 
-                if self.stdout_chunks and exit_code != 0:
+                if self.stderr_chunks and exit_code == 0:
                     # exit code zero returned, but stderr is not empty, this could imply minor issues or warnings
-                    return t_insert(f"SQL query completed..\n\nWarning:\n\n{''.join(self.stdout_chunks)}")
+                    return t_insert(f"SQL query completed..\n\nWarning:\n\n{''.join(self.stderr_chunks)}")
 
-                if len(self.stderr_chunks) > 0:  # non-zero exit code implies error
-                    raise (MySqlScriptError(self.stderr_chunks))  # raises the MySqlScriptError class
+                if self.stderr_chunks and exit_code != 0:  # non-zero exit code implies error
+                    raise (MySqlScriptError(''.join(self.stderr_chunks)))  # raises the MySqlScriptError class
             else:
                 t_insert('Please Establish a connection...')
         except paramiko.SSHException as e:
@@ -286,13 +287,13 @@ def all_invoiced():
 def never_invoiced():
     file_name = 'never_invoiced.csv'
     try:
-        ssh.exec_cmd(all_inv_cmd)
+        ssh.exec_cmd(never_inv_cmd)
     except AttributeError as e:
         t_insert(f'Please Establish a Connection and try again...\n\n {e}')
         raise
-    else:
-        ssh.file_copy(file_name)
-        ssh.data_clean(file_name)
+    # else:
+    #     ssh.file_copy(file_name)
+    #     ssh.data_clean(file_name)
 
 
 def tar_month_invoiced():
